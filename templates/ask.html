@@ -1,0 +1,6 @@
+{% extends "base.html" %}
+{% block title %}New Question — AskPupkin{% endblock %}
+{% block content %}
+<h4 class="mb-3">New Question</h4>
+<form class="ap-card p-4"><div class="mb-3"><label class="form-label">Title</label><input type="text" class="form-control is-invalid" maxlength="150" placeholder="How to build a moon park ?"><div class="form-text">Максимум 150 символов.</div><div class="invalid-feedback">Нужно заполнить заголовок.</div></div><div class="mb-3"><label class="form-label">Text</label><textarea rows="6" maxlength="10000" placeholder="Really, how? Have no idea about it"></textarea><div class="form-text">Подробно опишите проблему. Максимум 10000 символов.</div></div><div class="mb-3"><label class="form-label">Tags</label><input type="text" maxlength="100" placeholder="moon, park, puzzle"><div class="form-text">Через запятую. До 5 тегов.</div></div><button class="btn btn-success">ASK!</button></form>
+{% endblock %}

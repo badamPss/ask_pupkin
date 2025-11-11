@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block title %}Settings — AskPupkin{% endblock %}
+{% block content %}
+<h4 class="mb-3">Settings: Dr. Pepper</h4>
+<form class="ap-card p-4" enctype="multipart/form-data"><div class="row g-4 align-items-start"><div class="col-12">
+<div class="mb-3"><label class="form-label">Login</label><input type="text" value="dr_pepper"></div>
+<div class="mb-3"><label class="form-label">Email</label><input type="email" value="dr.pepper@mail.ru"></div>
+<div class="mb-3"><label class="form-label">NickName</label><input type="text" value="Dr. Perpper"></div>
+<div class="mb-3"><label class="form-label">Upload avatar</label><input type="file"></div>
+<button class="btn btn-primary">Save</button></div></div></form>
+{% endblock %}

@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block title %}{{ question.title }} — AskPupkin{% endblock %}
+{% block content %}
+<article class="ap-card p-4 mb-3"><h3 class="mb-2">{{ question.title }}</h3><p class="text-muted">{{ question.text }}</p>
+<div class="d-flex align-items-center gap-2 flex-wrap">{% for t in question.tags %}<a class="badge text-bg-secondary ap-tag" href="{% url 'tag' t %}">{{ t }}</a>{% endfor %}</div></article>
+<section class="mb-4">{% for a in answers %}
+<div class="ap-card p-3 mb-3"><div class="d-flex gap-3"><div class="ap-avatar flex-shrink-0">avatar</div><div class="flex-grow-1">
+<p class="mb-2">{{ a.text }}</p><div class="d-flex align-items-center justify-content-between">
+<label class="d-flex align-items-center gap-2"><input type="checkbox" {% if a.correct %}checked{% endif %}><span>Correct!</span></label>
+<div class="d-flex gap-1"><button class="btn btn-sm btn-outline-secondary">−</button><span class="btn btn-sm ap-like">{{ a.likes }}</span><button class="btn btn-sm btn-outline-secondary">+</button></div>
+</div></div></div></div>{% endfor %}</section>
+<section class="ap-card p-3"><h6 class="mb-3">Enter your answer here.</h6><form><div class="mb-3"><textarea rows="5" maxlength="5000" placeholder="Ваш ответ..."></textarea><div class="form-text">Максимум 5000 символов.</div></div><button class="btn btn-primary">Answer</button></form></section>
+{% endblock %}

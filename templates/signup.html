@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block title %}Registration — AskPupkin{% endblock %}
+{% block content %}
+<h4 class="mb-3">Registration</h4>
+<form class="ap-card p-4" novalidate>
+<div class="alert alert-danger">Sorry, this email address already registered!</div>
+<div class="row g-4">
+  <div class="col-12"><label class="form-label">Login</label><input type="text" maxlength="150" value="dr_pepper"></div>
+  <div class="col-12"><label class="form-label">Email</label><input type="email" class="is-invalid" maxlength="254" value="drpepper@mail.ru"><div class="invalid-feedback">Такой email уже существует.</div></div>
+  <div class="col-12"><label class="form-label">NickName</label><input type="text" maxlength="150" value="Dr. Pepper"></div>
+  <div class="col-12"><label class="form-label">Password</label><input type="password" maxlength="128"></div>
+  <div class="col-12"><label class="form-label">Repeat password</label><input type="password" maxlength="128"></div>
+  <div class="col-12"><label class="form-label d-block">Upload avatar</label><input type="file"></div>
+</div><div class="mt-4"><button class="btn btn-success">Register!</button></div></form>
+{% endblock %}
