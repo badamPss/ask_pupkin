@@ -9,7 +9,7 @@
     <h5 class="mb-1"><a href="{% url 'question' q.id %}">{{ q.title }}</a></h5>
     <p class="text-muted mb-2">{{ q.text }}</p>
     <div class="d-flex align-items-center justify-content-between">
-      <div class="d-flex align-items-center gap-2 flex-wrap">{% for t in q.tags %}<a class="badge text-bg-secondary ap-tag" href="{% url 'tag' t %}">{{ t }}</a>{% endfor %}
+      <div class="d-flex align-items-center gap-2 flex-wrap">{% for t in q.tags.all %}<a class="badge text-bg-secondary ap-tag" href="{% url 'tag' t.slug %}">{{ t.name }}</a>{% endfor %}
         <a class="ms-2 small" href="{% url 'question' q.id %}">answer ({{ q.answers_count }})</a></div>
       <div class="d-flex align-items-center gap-2"><span class="badge text-bg-light">answers: {{ q.answers_count }}</span>
         <div class="d-flex gap-1"><button class="btn btn-sm btn-outline-secondary">−</button><span class="btn btn-sm ap-like">{{ q.likes }}</span><button class="btn btn-sm btn-outline-secondary">+</button></div></div>

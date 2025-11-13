@@ -2,7 +2,7 @@
 {% block title %}{{ question.title }} — AskPupkin{% endblock %}
 {% block content %}
 <article class="ap-card p-4 mb-3"><h3 class="mb-2">{{ question.title }}</h3><p class="text-muted">{{ question.text }}</p>
-<div class="d-flex align-items-center gap-2 flex-wrap">{% for t in question.tags %}<a class="badge text-bg-secondary ap-tag" href="{% url 'tag' t %}">{{ t }}</a>{% endfor %}</div></article>
+<div class="d-flex align-items-center gap-2 flex-wrap">{% for t in question.tags.all %}<a class="badge text-bg-secondary ap-tag" href="{% url 'tag' t.slug %}">{{ t.name }}</a>{% endfor %}</div></article>
 <section class="mb-4">{% for a in answers %}
 <div class="ap-card p-3 mb-3"><div class="d-flex gap-3"><div class="ap-avatar flex-shrink-0">avatar</div><div class="flex-grow-1">
 <p class="mb-2">{{ a.text }}</p><div class="d-flex align-items-center justify-content-between">

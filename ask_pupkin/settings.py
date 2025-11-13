@@ -20,7 +20,16 @@ TEMPLATES = [{'BACKEND':'django.template.backends.django.DjangoTemplates','DIRS'
 'django.template.context_processors.debug','django.template.context_processors.request',
 'django.contrib.auth.context_processors.auth','django.contrib.messages.context_processors.messages',],},},]
 WSGI_APPLICATION = 'ask_pupkin.wsgi.application'
-DATABASES = {'default':{'ENGINE':'django.db.backends.sqlite3','NAME': BASE_DIR / 'db.sqlite3',}}
+DATABASES = {
+    "default": {
+        "ENGINE": "django.db.backends.postgresql",
+        "NAME": os.getenv("PG_NAME", "ask_pupkin"),
+        "USER": os.getenv("PG_USER", "ask_pupkin"),
+        "PASSWORD": os.getenv("PG_PASSWORD", "ask_pupkin"),
+        "HOST": os.getenv("PG_HOST", "127.0.0.1"),
+        "PORT": os.getenv("PG_PORT", "5432"),
+    }
+}
 AUTH_PASSWORD_VALIDATORS = []
 LANGUAGE_CODE = 'ru-ru'; TIME_ZONE = 'UTC'; USE_I18N = True; USE_TZ = True
 STATIC_URL = '/static/'; STATICFILES_DIRS = [BASE_DIR/'static']
