@@ -2,8 +2,26 @@
 {% block title %}Log In — AskPupkin{% endblock %}
 {% block content %}
 <h4 class="mb-3">Log In</h4>
-<form class="ap-card p-4" novalidate><div class="alert alert-danger">Sorry, wrong password!</div>
-<div class="mb-3"><label class="form-label">Login</label><input type="text" maxlength="150" placeholder="Enter your login here"></div>
-<div class="mb-3"><label class="form-label">Password</label><input type="password" maxlength="128"></div>
-<button class="btn btn-primary">Log in!</button><p class="mt-3 mb-0"><a href="{% url 'signup' %}">create new account</a></p></form>
+<form class="ap-card p-4" method="post" novalidate>
+  {% csrf_token %}
+  {% if form.non_field_errors %}
+    <div class="alert alert-danger">{{ form.non_field_errors }}</div>
+  {% endif %}
+  <div class="mb-3">
+    <label class="form-label" for="{{ form.username.id_for_label }}">Login</label>
+    {{ form.username }}
+    {% if form.username.errors %}
+      <div class="invalid-feedback d-block">{{ form.username.errors }}</div>
+    {% endif %}
+  </div>
+  <div class="mb-3">
+    <label class="form-label" for="{{ form.password.id_for_label }}">Password</label>
+    {{ form.password }}
+    {% if form.password.errors %}
+      <div class="invalid-feedback d-block">{{ form.password.errors }}</div>
+    {% endif %}
+  </div>
+  <button class="btn btn-primary" type="submit">Log in!</button>
+  <p class="mt-3 mb-0"><a href="{% url 'signup' %}">create new account</a></p>
+</form>
 {% endblock %}

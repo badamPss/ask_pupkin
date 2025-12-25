@@ -2,5 +2,35 @@
 {% block title %}New Question — AskPupkin{% endblock %}
 {% block content %}
 <h4 class="mb-3">New Question</h4>
-<form class="ap-card p-4"><div class="mb-3"><label class="form-label">Title</label><input type="text" class="form-control is-invalid" maxlength="150" placeholder="How to build a moon park ?"><div class="form-text">Максимум 150 символов.</div><div class="invalid-feedback">Нужно заполнить заголовок.</div></div><div class="mb-3"><label class="form-label">Text</label><textarea rows="6" maxlength="10000" placeholder="Really, how? Have no idea about it"></textarea><div class="form-text">Подробно опишите проблему. Максимум 10000 символов.</div></div><div class="mb-3"><label class="form-label">Tags</label><input type="text" maxlength="100" placeholder="moon, park, puzzle"><div class="form-text">Через запятую. До 5 тегов.</div></div><button class="btn btn-success">ASK!</button></form>
+<form class="ap-card p-4" method="post" novalidate>
+  {% csrf_token %}
+  {% if form.non_field_errors %}
+    <div class="alert alert-danger">{{ form.non_field_errors }}</div>
+  {% endif %}
+  <div class="mb-3">
+    <label class="form-label" for="{{ form.title.id_for_label }}">Title</label>
+    {{ form.title }}
+    <div class="form-text">{{ form.title.help_text }}</div>
+    {% if form.title.errors %}
+      <div class="invalid-feedback d-block">{{ form.title.errors }}</div>
+    {% endif %}
+  </div>
+  <div class="mb-3">
+    <label class="form-label" for="{{ form.text.id_for_label }}">Text</label>
+    {{ form.text }}
+    <div class="form-text">{{ form.text.help_text }}</div>
+    {% if form.text.errors %}
+      <div class="invalid-feedback d-block">{{ form.text.errors }}</div>
+    {% endif %}
+  </div>
+  <div class="mb-3">
+    <label class="form-label" for="{{ form.tags.id_for_label }}">Tags</label>
+    {{ form.tags }}
+    <div class="form-text">{{ form.tags.help_text }}</div>
+    {% if form.tags.errors %}
+      <div class="invalid-feedback d-block">{{ form.tags.errors }}</div>
+    {% endif %}
+  </div>
+  <button class="btn btn-success" type="submit">ASK!</button>
+</form>
 {% endblock %}
