@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sample HTML File</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        .container {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 30px;
+            border-radius: 10px;
+            backdrop-filter: blur(10px);
+        }
+        h1 {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .info {
+            background: rgba(255, 255, 255, 0.2);
+            padding: 15px;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Sample HTML File</h1>
+        <div class="info">
+            <p><strong>This is a test file for nginx static content delivery.</strong></p>
+            <p>If you can see this page, nginx is correctly configured to serve static files.</p>
+        </div>
+        <div class="info">
+            <p><strong>File location:</strong> /static/sample.html</p>
+            <p><strong>URL:</strong> http://localhost/sample.html</p>
+        </div>
+        <div class="info">
+            <p>This file is used for testing static content delivery performance.</p>
+        </div>
+    </div>
+</body>
+</html>
+

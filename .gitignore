@@ -13,6 +13,7 @@ venv/
 # Django / SQLite
 db.sqlite3
 *.log
+deploy/logs/
 
 # Static & media (user uploads)
 staticfiles/
