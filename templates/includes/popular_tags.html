@@ -1,0 +1,10 @@
+<div class="sidebar-block">
+  <div class="sidebar-block__title">Popular Tags</div>
+  <div class="tags-container">
+    {% for tag in tags %}
+      <a href="{% url 'tag' tag.slug %}">{{ tag.name }}</a>
+    {% empty %}
+      <span class="text-muted small">No popular tags yet</span>
+    {% endfor %}
+  </div>
+</div>

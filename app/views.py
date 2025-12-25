@@ -5,10 +5,12 @@ from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.urls import reverse
 from django.views.decorators.http import require_http_methods
-from django.db.models import Sum
+from django.db.models import Sum, Count, Q
+from django.core.cache import cache
 from .models import Question, Tag, Answer, Profile, QuestionLike, AnswerLike
 from .utils import paginate
 from .forms import LoginForm, SignUpForm, ProfileEditForm, AskQuestionForm, AnswerForm
+from .centrifugo import publish_to_centrifugo
 
 def index(request: HttpRequest):
     qs = Question.objects.new().select_related("author", "author__profile").prefetch_related("tags")
@@ -59,7 +61,6 @@ def hot(request: HttpRequest):
     
     return render(request, 'index.html', {
         'page': page,
-        'hot': True,
         'questions_data': questions_data
     })
 
@@ -87,7 +88,6 @@ def tag(request: HttpRequest, slug: str):
     
     return render(request, 'tag.html', {
         'page': page,
-        'tag': slug,
         'tag_obj': tag_obj,
         'questions_data': questions_data
     })
@@ -135,17 +135,36 @@ def question(request: HttpRequest, qid: int):
             answer.question = q
             answer.author = request.user
             answer.save()
+            
+            channel = f"public:question_{qid}"
+            answer_data = {
+                'id': answer.pk,
+                'text': answer.text,
+                'author': {
+                    'id': answer.author.pk,
+                    'username': answer.author.username,
+                    'nickname': getattr(answer.author.profile, 'nickname', None) or answer.author.username,
+                    'avatar': answer.author.profile.avatar.url if hasattr(answer.author, 'profile') and answer.author.profile.avatar else None
+                },
+                'created_at': answer.created_at.isoformat(),
+                'is_correct': answer.is_correct,
+                'rating': 0
+            }
+            publish_to_centrifugo(channel, answer_data)
+            
             return redirect(f"{reverse('question', kwargs={'qid': qid})}#answer-{answer.pk}")
     else:
         form = AnswerForm()
     
+    from django.conf import settings
     return render(request, 'question.html', {
         'question': q,
         'answers_data': answers_data,
         'form': form,
         'user_liked_question': user_liked_question,
         'question_rating': question_rating,
-        'is_question_author': is_question_author
+        'is_question_author': is_question_author,
+        'CENTRIFUGO_WS_URL': settings.CENTRIFUGO_WS_URL
     })
 
 @login_required
@@ -172,13 +191,12 @@ def login_view(request: HttpRequest):
             username = form.cleaned_data['username']
             password = form.cleaned_data['password']
             user = authenticate(request, username=username, password=password)
-            if user:
+            if user is not None:
                 login(request, user)
-                next_url = request.GET.get('continue', None)
-                if next_url:
-                    if next_url.startswith('/') and not next_url.startswith('//'):
-                        return redirect(next_url)
-                return redirect('index')
+                next_url = request.GET.get('continue', '/')
+                return redirect(next_url)
+            else:
+                form.add_error(None, 'Неверный логин или пароль')
     else:
         form = LoginForm()
     
@@ -191,49 +209,44 @@ def signup_view(request: HttpRequest):
     if request.method == 'POST':
         form = SignUpForm(request.POST, request.FILES)
         if form.is_valid():
-            user = form.save()
-            login(request, user)
-            return redirect('index')
+            form.save()
+            username = form.cleaned_data['username']
+            password = form.cleaned_data['password1']
+            user = authenticate(request, username=username, password=password)
+            if user is not None:
+                login(request, user)
+                return redirect('index')
     else:
         form = SignUpForm()
     
     return render(request, 'signup.html', {'form': form})
 
 def logout_view(request: HttpRequest):
-    if request.method == 'POST':
-        logout(request)
-        referer = request.META.get('HTTP_REFERER')
-        if referer:
-            from urllib.parse import urlparse
-            parsed = urlparse(referer)
-            path = parsed.path
-            protected_paths = ['/settings/', '/profile/edit/', '/ask/']
-            if path not in protected_paths and path != '/logout/':
-                return redirect(path)
-        return redirect('index')
-    return redirect('index')
+    logout(request)
+    return redirect(request.META.get('HTTP_REFERER', '/'))
 
 @login_required
 def profile_edit_view(request: HttpRequest):
-    profile, created = Profile.objects.get_or_create(user=request.user)
-    
     if request.method == 'POST':
-        form = ProfileEditForm(request.POST, request.FILES, instance=profile, user=request.user)
+        form = ProfileEditForm(request.POST, request.FILES, instance=request.user)
         if form.is_valid():
             form.save()
-            messages.success(request, 'Профиль успешно обновлен.')
-            return redirect('profile_edit')
+            messages.success(request, 'Профиль успешно обновлен')
+            return redirect('settings')
     else:
-        form = ProfileEditForm(instance=profile, user=request.user)
+        form = ProfileEditForm(instance=request.user)
     
     return render(request, 'settings.html', {'form': form})
-
 
 @require_http_methods(["POST"])
 @login_required
 def question_like(request: HttpRequest, qid: int):
     question = get_object_or_404(Question, pk=qid)
-    action = request.POST.get('action', 'like')
+    action = request.POST.get('action')
+    
+    if action not in ['like', 'dislike']:
+        return JsonResponse({'error': 'Invalid action'}, status=400)
+    
     value = 1 if action == 'like' else -1
     
     like, created = QuestionLike.objects.get_or_create(
@@ -257,12 +270,15 @@ def question_like(request: HttpRequest, qid: int):
         'user_liked': value if value != 0 else None
     })
 
-
 @require_http_methods(["POST"])
 @login_required
 def answer_like(request: HttpRequest, aid: int):
     answer = get_object_or_404(Answer, pk=aid)
-    action = request.POST.get('action', 'like')
+    action = request.POST.get('action')
+    
+    if action not in ['like', 'dislike']:
+        return JsonResponse({'error': 'Invalid action'}, status=400)
+    
     value = 1 if action == 'like' else -1
     
     like, created = AnswerLike.objects.get_or_create(
@@ -286,7 +302,6 @@ def answer_like(request: HttpRequest, aid: int):
         'user_liked': value if value != 0 else None
     })
 
-
 @require_http_methods(["POST"])
 @login_required
 def mark_correct_answer(request: HttpRequest, qid: int, aid: int):
@@ -302,3 +317,53 @@ def mark_correct_answer(request: HttpRequest, qid: int, aid: int):
     return JsonResponse({
         'is_correct': answer.is_correct
     })
+
+def search(request: HttpRequest):
+    query = request.GET.get('q', '').strip()
+    if not query:
+        return redirect('index')
+    
+    questions = Question.objects.filter(
+        Q(title__icontains=query) | Q(text__icontains=query)
+    ).select_related("author", "author__profile").prefetch_related("tags")
+    
+    page = paginate(questions, request, per_page=10)
+    
+    questions_data = []
+    for q in page.object_list:
+        user_liked = None
+        if request.user.is_authenticated:
+            try:
+                like = QuestionLike.objects.get(question=q, user=request.user)
+                user_liked = like.value
+            except QuestionLike.DoesNotExist:
+                pass
+        
+        rating = QuestionLike.objects.filter(question=q).aggregate(total=Sum('value'))['total'] or 0
+        questions_data.append({
+            'question': q,
+            'user_liked': user_liked,
+            'rating': rating
+        })
+    
+    return render(request, 'index.html', {
+        'page': page,
+        'questions_data': questions_data,
+        'search_query': query
+    })
+
+def search_suggestions(request: HttpRequest):
+    query = request.GET.get('q', '').strip()
+    if len(query) < 2:
+        return JsonResponse({'results': []})
+    
+    questions = Question.objects.filter(
+        Q(title__icontains=query) | Q(text__icontains=query)
+    )[:5]
+    
+    results = [{
+        'title': q.title,
+        'url': q.get_absolute_url()
+    } for q in questions]
+    
+    return JsonResponse({'results': results})

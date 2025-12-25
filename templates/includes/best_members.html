@@ -1,0 +1,10 @@
+<div class="sidebar-block">
+  <div class="sidebar-block__title">Best Members</div>
+  <div class="members-list">
+    {% for member in members %}
+      <a href="#">{{ member.profile.nickname|default:member.username }}</a>
+    {% empty %}
+      <span class="text-muted small">No best members yet</span>
+    {% endfor %}
+  </div>
+</div>

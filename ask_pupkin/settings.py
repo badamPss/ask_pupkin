@@ -38,3 +38,14 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 LOGIN_URL = '/login/'
 LOGIN_REDIRECT_URL = '/'
+
+CACHES = {
+    'default': {
+        'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+        'LOCATION': 'unique-snowflake',
+    }
+}
+
+CENTRIFUGO_API_URL = os.getenv('CENTRIFUGO_API_URL', 'http://127.0.0.1:8001/api')
+CENTRIFUGO_API_KEY = os.getenv('CENTRIFUGO_API_KEY', 'ced3857b59422555bb4935ccb7cd4307dfef6917519bf764399665d7539cae54') //пока пусть будет видно
+CENTRIFUGO_WS_URL = os.getenv('CENTRIFUGO_WS_URL', 'ws://127.0.0.1:8001/connection/websocket')
