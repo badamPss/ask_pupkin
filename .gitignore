@@ -54,5 +54,8 @@ coverage.xml
 .env.local
 .env.*.local
 
+# Centrifugo config with secrets
+centrifuge_config.json
+
 # Backup files
 *~

@@ -101,8 +101,57 @@
 </section>
 {% endblock %}
 {% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/centrifuge@5/dist/centrifuge.min.js"></script>
 <script>
 $(document).ready(function() {
+    const questionId = {{ question.id }};
+    const centrifugeUrl = '{{ CENTRIFUGO_WS_URL|escapejs }}';
+    
+    const centrifuge = new Centrifuge(centrifugeUrl);
+    const channel = centrifuge.newSubscription('public:question_' + questionId);
+    
+    channel.on('publication', function(ctx) {
+        const answer = ctx.data;
+        const answersSection = $('section.mb-4');
+        if (answersSection.length === 0) {
+            return;
+        }
+        const answerHtml = `
+            <div class="ap-card p-3 mb-3" id="answer-${answer.id}">
+                <div class="d-flex gap-3">
+                    <div class="ap-avatar flex-shrink-0">
+                        ${answer.author.avatar ? 
+                            `<img src="${answer.author.avatar}" alt="${answer.author.username}" style="width: 64px; height: 64px; border-radius: 12px; object-fit: cover;">` : 
+                            'avatar'}
+                    </div>
+                    <div class="flex-grow-1">
+                        <p class="mb-2">${answer.text}</p>
+                        <div class="d-flex align-items-center justify-content-between">
+                            <label class="d-flex align-items-center gap-2">
+                                <input type="checkbox" ${answer.is_correct ? 'checked' : ''} disabled>
+                                <span>Correct!</span>
+                            </label>
+                            <div class="d-flex gap-1" role="group" data-answer-id="${answer.id}">
+                                <button class="btn btn-sm btn-outline-secondary" disabled>−</button>
+                                <span class="btn btn-sm ap-like answer-rating">${answer.rating}</span>
+                                <button class="btn btn-sm btn-outline-secondary" disabled>+</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+        answersSection.append(answerHtml);
+        
+        const answerForm = $('#answer-form');
+        if (answerForm.length) {
+            answerForm[0].scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+    });
+    
+    channel.subscribe();
+    centrifuge.connect();
+    
     $('.question-like-btn').click(function() {
         const btn = $(this);
         const container = btn.closest('[data-question-id]');

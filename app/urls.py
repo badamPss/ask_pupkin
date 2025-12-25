@@ -14,4 +14,6 @@ urlpatterns = [
     path('ajax/question/<int:qid>/like/', views.question_like, name='question_like'),
     path('ajax/answer/<int:aid>/like/', views.answer_like, name='answer_like'),
     path('ajax/question/<int:qid>/answer/<int:aid>/correct/', views.mark_correct_answer, name='mark_correct_answer'),
+    path('search/', views.search, name='search'),
+    path('ajax/search/suggestions/', views.search_suggestions, name='search_suggestions'),
 ]
