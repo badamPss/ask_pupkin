@@ -1,29 +1,81 @@
 {% extends "base.html" %}
 {% block title %}{{ question.title }} — AskPupkin{% endblock %}
 {% block content %}
-<article class="ap-card p-4 mb-3"><h3 class="mb-2">{{ question.title }}</h3><p class="text-muted">{{ question.text }}</p>
-<div class="d-flex align-items-center gap-2 flex-wrap">{% for t in question.tags.all %}<a class="badge text-bg-secondary ap-tag" href="{% url 'tag' t.slug %}">{{ t.name }}</a>{% endfor %}</div></article>
+<article class="ap-card p-4 mb-3">
+  <div class="d-flex gap-3 mb-3">
+    <div class="ap-avatar flex-shrink-0">
+      {% if question.author.profile and question.author.profile.avatar %}
+        <img src="{{ question.author.profile.avatar.url }}" alt="{{ question.author.username }}" style="width: 64px; height: 64px; border-radius: 12px; object-fit: cover;">
+      {% else %}
+        avatar
+      {% endif %}
+    </div>
+    <div class="flex-grow-1">
+      <h3 class="mb-2">{{ question.title }}</h3>
+      <p class="text-muted">{{ question.text }}</p>
+      <div class="d-flex align-items-center gap-2 flex-wrap">
+        {% for t in question.tags.all %}
+          <a class="badge text-bg-secondary ap-tag" href="{% url 'tag' t.slug %}">{{ t.name }}</a>
+        {% endfor %}
+      </div>
+      {% if user.is_authenticated %}
+        <div class="d-flex gap-1 mt-2" role="group" data-question-id="{{ question.id }}">
+          <button class="btn btn-sm btn-outline-secondary question-like-btn" data-action="dislike" {% if user_liked_question == -1 %}disabled{% endif %}>−</button>
+          <span class="btn btn-sm ap-like question-rating">{{ question_rating }}</span>
+          <button class="btn btn-sm btn-outline-secondary question-like-btn" data-action="like" {% if user_liked_question == 1 %}disabled{% endif %}>+</button>
+        </div>
+      {% else %}
+        <div class="d-flex gap-1 mt-2">
+          <button class="btn btn-sm btn-outline-secondary" disabled>−</button>
+          <span class="btn btn-sm ap-like">{{ question_rating }}</span>
+          <button class="btn btn-sm btn-outline-secondary" disabled>+</button>
+        </div>
+      {% endif %}
+    </div>
+  </div>
+</article>
 <section class="mb-4">
-  {% for a in answers %}
+  {% for item in answers_data %}
+    {% with a=item.answer %}
     <div class="ap-card p-3 mb-3" id="answer-{{ a.pk }}">
       <div class="d-flex gap-3">
-        <div class="ap-avatar flex-shrink-0">avatar</div>
+        <div class="ap-avatar flex-shrink-0">
+          {% if a.author.profile and a.author.profile.avatar %}
+            <img src="{{ a.author.profile.avatar.url }}" alt="{{ a.author.username }}" style="width: 64px; height: 64px; border-radius: 12px; object-fit: cover;">
+          {% else %}
+            avatar
+          {% endif %}
+        </div>
         <div class="flex-grow-1">
           <p class="mb-2">{{ a.text }}</p>
           <div class="d-flex align-items-center justify-content-between">
-            <label class="d-flex align-items-center gap-2">
-              <input type="checkbox" {% if a.is_correct %}checked{% endif %} disabled>
-              <span>Correct!</span>
-            </label>
-            <div class="d-flex gap-1">
-              <button class="btn btn-sm btn-outline-secondary">−</button>
-              <span class="btn btn-sm ap-like">{{ a.answer_likes.count }}</span>
-              <button class="btn btn-sm btn-outline-secondary">+</button>
+            {% if is_question_author %}
+              <label class="d-flex align-items-center gap-2">
+                <input type="checkbox" class="correct-answer-checkbox" data-question-id="{{ question.id }}" data-answer-id="{{ a.pk }}" {% if a.is_correct %}checked{% endif %}>
+                <span>Correct!</span>
+              </label>
+            {% else %}
+              <label class="d-flex align-items-center gap-2">
+                <input type="checkbox" {% if a.is_correct %}checked{% endif %} disabled>
+                <span>Correct!</span>
+              </label>
+            {% endif %}
+            <div class="d-flex gap-1" role="group" data-answer-id="{{ a.pk }}">
+              {% if user.is_authenticated %}
+                <button class="btn btn-sm btn-outline-secondary answer-like-btn" data-action="dislike" {% if item.user_liked == -1 %}disabled{% endif %}>−</button>
+                <span class="btn btn-sm ap-like answer-rating">{{ item.rating }}</span>
+                <button class="btn btn-sm btn-outline-secondary answer-like-btn" data-action="like" {% if item.user_liked == 1 %}disabled{% endif %}>+</button>
+              {% else %}
+                <button class="btn btn-sm btn-outline-secondary" disabled>−</button>
+                <span class="btn btn-sm ap-like">{{ item.rating }}</span>
+                <button class="btn btn-sm btn-outline-secondary" disabled>+</button>
+              {% endif %}
             </div>
           </div>
         </div>
       </div>
     </div>
+    {% endwith %}
   {% endfor %}
 </section>
 <section class="ap-card p-3" id="answer-form">
@@ -47,4 +99,107 @@
     <p class="text-muted">Пожалуйста, <a href="{% url 'login' %}">войдите</a> или <a href="{% url 'signup' %}">зарегистрируйтесь</a>, чтобы оставить ответ.</p>
   {% endif %}
 </section>
+{% endblock %}
+{% block extra_js %}
+<script>
+$(document).ready(function() {
+    $('.question-like-btn').click(function() {
+        const btn = $(this);
+        const container = btn.closest('[data-question-id]');
+        const questionId = container.data('question-id');
+        const action = btn.data('action');
+        const ratingSpan = container.find('.question-rating');
+        const likeBtn = container.find('[data-action="like"]');
+        const dislikeBtn = container.find('[data-action="dislike"]');
+        
+        $.ajax({
+            url: '/ajax/question/' + questionId + '/like/',
+            method: 'POST',
+            data: {
+                'action': action
+            },
+            success: function(data) {
+                ratingSpan.text(data.rating);
+                if (data.user_liked === 1) {
+                    likeBtn.prop('disabled', true);
+                    dislikeBtn.prop('disabled', false);
+                } else if (data.user_liked === -1) {
+                    dislikeBtn.prop('disabled', true);
+                    likeBtn.prop('disabled', false);
+                } else {
+                    likeBtn.prop('disabled', false);
+                    dislikeBtn.prop('disabled', false);
+                }
+            },
+            error: function(xhr) {
+                if (xhr.status === 403) {
+                    alert('Пожалуйста, войдите в систему');
+                } else {
+                    alert('Ошибка при обработке запроса');
+                }
+            }
+        });
+    });
+    
+    $('.answer-like-btn').click(function() {
+        const btn = $(this);
+        const container = btn.closest('[data-answer-id]');
+        const answerId = container.data('answer-id');
+        const action = btn.data('action');
+        const ratingSpan = container.find('.answer-rating');
+        const likeBtn = container.find('[data-action="like"]');
+        const dislikeBtn = container.find('[data-action="dislike"]');
+        
+        $.ajax({
+            url: '/ajax/answer/' + answerId + '/like/',
+            method: 'POST',
+            data: {
+                'action': action
+            },
+            success: function(data) {
+                ratingSpan.text(data.rating);
+                if (data.user_liked === 1) {
+                    likeBtn.prop('disabled', true);
+                    dislikeBtn.prop('disabled', false);
+                } else if (data.user_liked === -1) {
+                    dislikeBtn.prop('disabled', true);
+                    likeBtn.prop('disabled', false);
+                } else {
+                    likeBtn.prop('disabled', false);
+                    dislikeBtn.prop('disabled', false);
+                }
+            },
+            error: function(xhr) {
+                if (xhr.status === 403) {
+                    alert('Пожалуйста, войдите в систему');
+                } else {
+                    alert('Ошибка при обработке запроса');
+                }
+            }
+        });
+    });
+    
+    $('.correct-answer-checkbox').change(function() {
+        const checkbox = $(this);
+        const questionId = checkbox.data('question-id');
+        const answerId = checkbox.data('answer-id');
+        
+        $.ajax({
+            url: '/ajax/question/' + questionId + '/answer/' + answerId + '/correct/',
+            method: 'POST',
+            success: function(data) {
+                checkbox.prop('checked', data.is_correct);
+            },
+            error: function(xhr) {
+                checkbox.prop('checked', !checkbox.prop('checked'));
+                if (xhr.status === 403) {
+                    alert('Только автор вопроса может отмечать правильный ответ');
+                } else {
+                    alert('Ошибка при обработке запроса');
+                }
+            }
+        });
+    });
+});
+</script>
 {% endblock %}

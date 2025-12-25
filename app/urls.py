@@ -11,4 +11,7 @@ urlpatterns = [
     path('ask/', views.ask, name='ask'),
     path('profile/edit/', views.profile_edit_view, name='profile_edit'),
     path('settings/', views.profile_edit_view, name='settings'),
+    path('ajax/question/<int:qid>/like/', views.question_like, name='question_like'),
+    path('ajax/answer/<int:aid>/like/', views.answer_like, name='answer_like'),
+    path('ajax/question/<int:qid>/answer/<int:aid>/correct/', views.mark_correct_answer, name='mark_correct_answer'),
 ]

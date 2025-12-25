@@ -2,9 +2,16 @@
 {% block title %}Tag: {{ tag }} — AskPupkin{% endblock %}
 {% block content %}
 <h4 class="mb-3">Tag: <span class="badge text-bg-secondary">{{ tag }}</span></h4>
-{% for q in page.object_list %}
+{% for item in questions_data %}
+{% with q=item.question %}
 <div class="ap-card p-3 mb-3"><div class="d-flex gap-3">
-  <div class="ap-avatar flex-shrink-0">avatar</div>
+  <div class="ap-avatar flex-shrink-0">
+    {% if q.author.profile and q.author.profile.avatar %}
+      <img src="{{ q.author.profile.avatar.url }}" alt="{{ q.author.username }}" style="width: 64px; height: 64px; border-radius: 12px; object-fit: cover;">
+    {% else %}
+      avatar
+    {% endif %}
+  </div>
   <div class="flex-grow-1">
     <h5 class="mb-1"><a href="{% url 'question' q.id %}">{{ q.title }}</a></h5>
     <p class="text-muted mb-2">{{ q.text }}</p>
@@ -12,10 +19,64 @@
       <div class="d-flex align-items-center gap-2 flex-wrap">{% for t in q.tags.all %}<a class="badge text-bg-secondary ap-tag" href="{% url 'tag' t.slug %}">{{ t.name }}</a>{% endfor %}
         <a class="ms-2 small" href="{% url 'question' q.id %}">answer ({{ q.answers_count }})</a></div>
       <div class="d-flex align-items-center gap-2"><span class="badge text-bg-light">answers: {{ q.answers_count }}</span>
-        <div class="d-flex gap-1"><button class="btn btn-sm btn-outline-secondary">−</button><span class="btn btn-sm ap-like">{{ q.likes }}</span><button class="btn btn-sm btn-outline-secondary">+</button></div></div>
+        <div class="d-flex gap-1" role="group" data-question-id="{{ q.id }}">
+          {% if user.is_authenticated %}
+            <button class="btn btn-sm btn-outline-secondary question-like-btn" data-action="dislike" {% if item.user_liked == -1 %}disabled{% endif %}>−</button>
+            <span class="btn btn-sm ap-like question-rating">{{ item.rating }}</span>
+            <button class="btn btn-sm btn-outline-secondary question-like-btn" data-action="like" {% if item.user_liked == 1 %}disabled{% endif %}>+</button>
+          {% else %}
+            <button class="btn btn-sm btn-outline-secondary" disabled>−</button>
+            <span class="btn btn-sm ap-like">{{ item.rating }}</span>
+            <button class="btn btn-sm btn-outline-secondary" disabled>+</button>
+          {% endif %}
+        </div></div>
     </div>
   </div>
 </div></div>
+{% endwith %}
 {% endfor %}
 {% include "includes/paginator.html" with page=page %}
+{% endblock %}
+{% block extra_js %}
+<script>
+$(document).ready(function() {
+    $('.question-like-btn').click(function() {
+        const btn = $(this);
+        const container = btn.closest('[data-question-id]');
+        const questionId = container.data('question-id');
+        const action = btn.data('action');
+        const ratingSpan = container.find('.question-rating');
+        const likeBtn = container.find('[data-action="like"]');
+        const dislikeBtn = container.find('[data-action="dislike"]');
+        
+        $.ajax({
+            url: '/ajax/question/' + questionId + '/like/',
+            method: 'POST',
+            data: {
+                'action': action
+            },
+            success: function(data) {
+                ratingSpan.text(data.rating);
+                if (data.user_liked === 1) {
+                    likeBtn.prop('disabled', true);
+                    dislikeBtn.prop('disabled', false);
+                } else if (data.user_liked === -1) {
+                    dislikeBtn.prop('disabled', true);
+                    likeBtn.prop('disabled', false);
+                } else {
+                    likeBtn.prop('disabled', false);
+                    dislikeBtn.prop('disabled', false);
+                }
+            },
+            error: function(xhr) {
+                if (xhr.status === 403) {
+                    alert('Пожалуйста, войдите в систему');
+                } else {
+                    alert('Ошибка при обработке запроса');
+                }
+            }
+        });
+    });
+});
+</script>
 {% endblock %}

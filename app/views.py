@@ -1,32 +1,129 @@
 from django.shortcuts import render, get_object_or_404, redirect
-from django.http import HttpRequest, HttpResponseRedirect
+from django.http import HttpRequest, HttpResponseRedirect, JsonResponse
 from django.contrib.auth import login, logout, authenticate
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.urls import reverse
-from .models import Question, Tag, Answer, Profile
+from django.views.decorators.http import require_http_methods
+from django.db.models import Sum
+from .models import Question, Tag, Answer, Profile, QuestionLike, AnswerLike
 from .utils import paginate
 from .forms import LoginForm, SignUpForm, ProfileEditForm, AskQuestionForm, AnswerForm
 
 def index(request: HttpRequest):
-    qs = Question.objects.new().select_related("author").prefetch_related("tags")
+    qs = Question.objects.new().select_related("author", "author__profile").prefetch_related("tags")
     page = paginate(qs, request, per_page=10)
-    return render(request, 'index.html', {'page': page})
+    
+    questions_data = []
+    for q in page.object_list:
+        user_liked = None
+        if request.user.is_authenticated:
+            try:
+                like = QuestionLike.objects.get(question=q, user=request.user)
+                user_liked = like.value
+            except QuestionLike.DoesNotExist:
+                pass
+        
+        rating = QuestionLike.objects.filter(question=q).aggregate(total=Sum('value'))['total'] or 0
+        questions_data.append({
+            'question': q,
+            'user_liked': user_liked,
+            'rating': rating
+        })
+    
+    return render(request, 'index.html', {
+        'page': page,
+        'questions_data': questions_data
+    })
 
 def hot(request: HttpRequest):
-    qs = Question.objects.hot().select_related("author").prefetch_related("tags")
+    qs = Question.objects.hot().select_related("author", "author__profile").prefetch_related("tags")
     page = paginate(qs, request, per_page=10)
-    return render(request, 'index.html', {'page': page, 'hot': True})
+    
+    questions_data = []
+    for q in page.object_list:
+        user_liked = None
+        if request.user.is_authenticated:
+            try:
+                like = QuestionLike.objects.get(question=q, user=request.user)
+                user_liked = like.value
+            except QuestionLike.DoesNotExist:
+                pass
+        
+        rating = QuestionLike.objects.filter(question=q).aggregate(total=Sum('value'))['total'] or 0
+        questions_data.append({
+            'question': q,
+            'user_liked': user_liked,
+            'rating': rating
+        })
+    
+    return render(request, 'index.html', {
+        'page': page,
+        'hot': True,
+        'questions_data': questions_data
+    })
 
 def tag(request: HttpRequest, slug: str):
-    get_object_or_404(Tag, slug=slug)
-    qs = Question.objects.tagged(slug).select_related("author").prefetch_related("tags")
+    tag_obj = get_object_or_404(Tag, slug=slug)
+    qs = Question.objects.tagged(slug).select_related("author", "author__profile").prefetch_related("tags")
     page = paginate(qs, request, per_page=10)
-    return render(request, 'tag.html', {'page': page, 'tag': slug})
+    
+    questions_data = []
+    for q in page.object_list:
+        user_liked = None
+        if request.user.is_authenticated:
+            try:
+                like = QuestionLike.objects.get(question=q, user=request.user)
+                user_liked = like.value
+            except QuestionLike.DoesNotExist:
+                pass
+        
+        rating = QuestionLike.objects.filter(question=q).aggregate(total=Sum('value'))['total'] or 0
+        questions_data.append({
+            'question': q,
+            'user_liked': user_liked,
+            'rating': rating
+        })
+    
+    return render(request, 'tag.html', {
+        'page': page,
+        'tag': slug,
+        'tag_obj': tag_obj,
+        'questions_data': questions_data
+    })
 
 def question(request: HttpRequest, qid: int):
-    q = get_object_or_404(Question.objects.select_related("author").prefetch_related("tags"), pk=qid)
-    answers = q.answers.select_related("author").all()
+    q = get_object_or_404(Question.objects.select_related("author", "author__profile").prefetch_related("tags"), pk=qid)
+    answers = q.answers.select_related("author", "author__profile").all()
+    
+    user_liked_question = None
+    if request.user.is_authenticated:
+        try:
+            like = QuestionLike.objects.get(question=q, user=request.user)
+            user_liked_question = like.value
+        except QuestionLike.DoesNotExist:
+            pass
+    
+    question_rating = QuestionLike.objects.filter(question=q).aggregate(total=Sum('value'))['total'] or 0
+    
+    answers_data = []
+    for answer in answers:
+        user_liked = None
+        if request.user.is_authenticated:
+            try:
+                like = AnswerLike.objects.get(answer=answer, user=request.user)
+                user_liked = like.value
+            except AnswerLike.DoesNotExist:
+                pass
+        
+        answer_rating = AnswerLike.objects.filter(answer=answer).aggregate(total=Sum('value'))['total'] or 0
+        answers_data.append({
+            'answer': answer,
+            'user_liked': user_liked,
+            'rating': answer_rating
+        })
+    
+    is_question_author = request.user.is_authenticated and q.author == request.user
     
     if request.method == 'POST':
         if not request.user.is_authenticated:
@@ -44,8 +141,11 @@ def question(request: HttpRequest, qid: int):
     
     return render(request, 'question.html', {
         'question': q,
-        'answers': answers,
-        'form': form
+        'answers_data': answers_data,
+        'form': form,
+        'user_liked_question': user_liked_question,
+        'question_rating': question_rating,
+        'is_question_author': is_question_author
     })
 
 @login_required
@@ -127,3 +227,78 @@ def profile_edit_view(request: HttpRequest):
         form = ProfileEditForm(instance=profile, user=request.user)
     
     return render(request, 'settings.html', {'form': form})
+
+
+@require_http_methods(["POST"])
+@login_required
+def question_like(request: HttpRequest, qid: int):
+    question = get_object_or_404(Question, pk=qid)
+    action = request.POST.get('action', 'like')
+    value = 1 if action == 'like' else -1
+    
+    like, created = QuestionLike.objects.get_or_create(
+        question=question,
+        user=request.user,
+        defaults={'value': value}
+    )
+    
+    if not created:
+        if like.value == value:
+            like.delete()
+            value = 0
+        else:
+            like.value = value
+            like.save()
+    
+    rating = QuestionLike.objects.filter(question=question).aggregate(total=Sum('value'))['total'] or 0
+    
+    return JsonResponse({
+        'rating': rating,
+        'user_liked': value if value != 0 else None
+    })
+
+
+@require_http_methods(["POST"])
+@login_required
+def answer_like(request: HttpRequest, aid: int):
+    answer = get_object_or_404(Answer, pk=aid)
+    action = request.POST.get('action', 'like')
+    value = 1 if action == 'like' else -1
+    
+    like, created = AnswerLike.objects.get_or_create(
+        answer=answer,
+        user=request.user,
+        defaults={'value': value}
+    )
+    
+    if not created:
+        if like.value == value:
+            like.delete()
+            value = 0
+        else:
+            like.value = value
+            like.save()
+    
+    rating = AnswerLike.objects.filter(answer=answer).aggregate(total=Sum('value'))['total'] or 0
+    
+    return JsonResponse({
+        'rating': rating,
+        'user_liked': value if value != 0 else None
+    })
+
+
+@require_http_methods(["POST"])
+@login_required
+def mark_correct_answer(request: HttpRequest, qid: int, aid: int):
+    question = get_object_or_404(Question, pk=qid)
+    
+    if question.author != request.user:
+        return JsonResponse({'error': 'Only question author can mark correct answer'}, status=403)
+    
+    answer = get_object_or_404(Answer, pk=aid, question=question)
+    answer.is_correct = not answer.is_correct
+    answer.save()
+    
+    return JsonResponse({
+        'is_correct': answer.is_correct
+    })
