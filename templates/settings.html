@@ -1,11 +1,47 @@
 {% extends "base.html" %}
 {% block title %}Settings — AskPupkin{% endblock %}
 {% block content %}
-<h4 class="mb-3">Settings: Dr. Pepper</h4>
-<form class="ap-card p-4" enctype="multipart/form-data"><div class="row g-4 align-items-start"><div class="col-12">
-<div class="mb-3"><label class="form-label">Login</label><input type="text" value="dr_pepper"></div>
-<div class="mb-3"><label class="form-label">Email</label><input type="email" value="dr.pepper@mail.ru"></div>
-<div class="mb-3"><label class="form-label">NickName</label><input type="text" value="Dr. Perpper"></div>
-<div class="mb-3"><label class="form-label">Upload avatar</label><input type="file"></div>
-<button class="btn btn-primary">Save</button></div></div></form>
+<h4 class="mb-3">Settings: {{ user.username }}</h4>
+<form class="ap-card p-4" method="post" enctype="multipart/form-data" novalidate>
+  {% csrf_token %}
+  {% if form.non_field_errors %}
+    <div class="alert alert-danger">{{ form.non_field_errors }}</div>
+  {% endif %}
+  <div class="row g-4 align-items-start">
+    <div class="col-12">
+      <div class="mb-3">
+        <label class="form-label">Login</label>
+        <input type="text" class="form-control" value="{{ user.username }}" disabled>
+        <div class="form-text">Имя пользователя нельзя изменить.</div>
+      </div>
+      <div class="mb-3">
+        <label class="form-label" for="{{ form.email.id_for_label }}">Email</label>
+        {{ form.email }}
+        {% if form.email.errors %}
+          <div class="invalid-feedback d-block">{{ form.email.errors }}</div>
+        {% endif %}
+      </div>
+      <div class="mb-3">
+        <label class="form-label" for="{{ form.nickname.id_for_label }}">NickName</label>
+        {{ form.nickname }}
+        {% if form.nickname.errors %}
+          <div class="invalid-feedback d-block">{{ form.nickname.errors }}</div>
+        {% endif %}
+      </div>
+      <div class="mb-3">
+        <label class="form-label" for="{{ form.avatar.id_for_label }}">Upload avatar</label>
+        {{ form.avatar }}
+        {% if form.avatar.errors %}
+          <div class="invalid-feedback d-block">{{ form.avatar.errors }}</div>
+        {% endif %}
+        {% if user.profile and user.profile.avatar %}
+          <div class="mt-2">
+            <img src="{{ user.profile.avatar.url }}" alt="Current avatar" style="max-width: 100px; max-height: 100px;">
+          </div>
+        {% endif %}
+      </div>
+      <button class="btn btn-primary" type="submit">Save</button>
+    </div>
+  </div>
+</form>
 {% endblock %}
